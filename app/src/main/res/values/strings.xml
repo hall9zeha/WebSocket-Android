@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">AndroidSocket</string>
+    <string name="bitcoin_msg_format">1 BTC = %s USD</string>
+</resources>
