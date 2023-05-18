@@ -18,6 +18,7 @@ class MainViewModel @Inject constructor(private val useCase: GetBtcPriceUseCase)
 
     //Este nombre será el que llamaremos desde nuestro layout con dataBinding  el cual solo se escribirá como "response"
     fun  getResponse():LiveData<BTCEntity>  = getPriceOfBtc()
+    /********************************************************/
     fun  getLoading():LiveData<Boolean> = useCase.getIsLoading()
 
     fun getPriceOfBtc():LiveData<BTCEntity>{
@@ -29,6 +30,8 @@ class MainViewModel @Inject constructor(private val useCase: GetBtcPriceUseCase)
     fun closeSocket(){
         useCase.closeSocket()
     }
-
+    fun onDestroy(){
+        useCase.onDestroy()
+    }
 
 }

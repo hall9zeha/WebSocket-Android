@@ -10,12 +10,12 @@ import com.squareup.moshi.Moshi
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.android.components.ViewModelComponent
-import org.java_websocket.client.WebSocketClient
-import org.java_websocket.handshake.ServerHandshake
-import java.lang.Exception
-import java.net.URI
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 import javax.inject.Inject
-import javax.net.ssl.SSLSocketFactory
 
 /****
  * Project AndroidSocket
@@ -26,52 +26,67 @@ import javax.net.ssl.SSLSocketFactory
 @Module
 @InstallIn(ViewModelComponent::class)
 class  GetBtcPriceUseCase @Inject constructor() {
-    var webSocketClient:WebSocketClient?=null
+   var webSocketListener:WebSocketListener?=null
+    private var webSocket:WebSocket ? = null
+    private var okHttpClient = OkHttpClient()
+
     private var coinbaseResponse:MutableLiveData<BTCEntity>  = MutableLiveData()
     private var isLoading:MutableLiveData<Boolean> = MutableLiveData(true)
 
-    private fun setUpWebSocketClient(){
-        val coinBaseUri: URI? = URI(Constants.COINBASE_SOCKET_URL)
-
-        createWebSocketClient(coinBaseUri)
-        val socketFactory = SSLSocketFactory.getDefault() as SSLSocketFactory
-        webSocketClient?.setSocketFactory(socketFactory)
-        webSocketClient?.connect()
+    init {
+        setUpOkhttpSocket()
     }
-    private fun createWebSocketClient(coinBaseURI: URI?){
-        webSocketClient = object:WebSocketClient(coinBaseURI){
-            override fun onOpen(handshakedata: ServerHandshake?) {
+    private fun setUpOkhttpSocket(){
+        webSocketListener = object:WebSocketListener(){
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                super.onOpen(webSocket, response)
                 subscribe()
+
             }
 
-            override fun onMessage(message: String?) {
-                //Log.e("TAG", message.toString() )
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                super.onMessage(webSocket, text)
                 isLoading.postValue(false)
-                getPrice(message)
+                getPrice(text)
             }
 
-            override fun onClose(code: Int, reason: String?, remote: Boolean) {
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                super.onFailure(webSocket, t, response)
+                Log.e("ERROR_SOCKET",t.message.toString())
+                isLoading.postValue(false)
+            }
+
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                super.onClosed(webSocket, code, reason)
                 unSubscribe()
             }
 
-            override fun onError(ex: Exception?) {
-                Log.e("ERROR_SOCKET",ex?.message.toString())
-                isLoading.postValue(false)
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                super.onClosing(webSocket, code, reason)
+
             }
+
         }
     }
-    fun closeSocket(){
-        webSocketClient?.close()
+    private fun createRequest() = Request.Builder()
+            .url(Constants.COINBASE_SOCKET_URL)
+            .build()
+
+    private fun subscribe(){
+        webSocket?.send(Constants.SUBSCRIBE_STRING_BODY)
+    }
+    private fun unSubscribe(){
+        webSocket?.send(Constants.UNSUBSCRIBE_STRING_BODY)
     }
     fun startSocket(){
-        setUpWebSocketClient()
+        webSocket = okHttpClient.newWebSocket(createRequest(),webSocketListener!!)
     }
-     private fun subscribe(){
-        webSocketClient?.send(Constants.SUBSCRIBE_STRING_BODY)
+    fun closeSocket(){
+        webSocket?.close(1000,"on pause status disconnect")
     }
 
-    private fun unSubscribe(){
-        webSocketClient?.send(Constants.UNSUBSCRIBE_STRING_BODY)
+    fun onDestroy(){
+        okHttpClient.dispatcher.executorService.shutdown()
     }
 
     private fun getPrice(response:String?){
