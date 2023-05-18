@@ -15,3 +15,4 @@ Sample application that implements a client with websockets, in android, showing
 * [Dagger Hilt](https://developer.android.com/training/dependency-injection/hilt-android)
 
 ## Screenshots :framed_picture:
+<img src="https://github.com/hall9zeha/WebSocket-Android/blob/main/screenshots/captura.gif" width=40% height=40% />
